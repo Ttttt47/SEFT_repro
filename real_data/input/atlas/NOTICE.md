@@ -1,0 +1,1 @@
+`AAL3v1.nii.gz` and `AAL3v1.nii.txt` are third-party AAL3 atlas material from [GIN-IMN](https://www.gin.cnrs.fr/en/tools/aal/). They are under the GNU General Public License, not the repository code's MIT license.

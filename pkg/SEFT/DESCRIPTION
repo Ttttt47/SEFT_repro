@@ -1,0 +1,28 @@
+Package: SEFT
+Type: Package
+Title: Spatial E-Value False Discovery Rate Testing
+Version: 0.0.0.9000
+Authors@R: person("Anonymous", role = c("aut", "cre"), email = "anonymous@example.invalid")
+Description: Provides a compact implementation of spatial e-value false discovery
+    rate testing for region-level inference from three-dimensional statistical
+    maps. The package includes the covariate-adaptive and Ising working models,
+    partial-conjunction testing, NIfTI input and output, and regional displays.
+    Bundled AAL3 atlas files are third-party material under the GNU GPL.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Depends: R (>= 4.1.0)
+Imports:
+    Rcpp,
+    RNifti,
+    stats,
+    utils
+LinkingTo:
+    Rcpp,
+    RcppArmadillo
+Suggests:
+    jsonlite,
+    testthat (>= 3.0.0),
+    waveslim
+Config/testthat/edition: 3
+SystemRequirements: C++17
+NeedsCompilation: yes

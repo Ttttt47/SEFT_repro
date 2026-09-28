@@ -1,0 +1,7 @@
+useDynLib(SEFT, .registration = TRUE)
+importFrom(Rcpp, evalCpp)
+importFrom(stats, setNames)
+importFrom(utils, head, tail)
+export(seft)
+S3method(plot,seft_result)
+S3method(print,seft_result)

@@ -1,0 +1,48 @@
+test_that("NIfTI input, output, and plotting form an end-to-end path", {
+    fixture <- tiny_seft_fixture()
+    input_dir <- tempfile("seft-input-")
+    output_dir <- tempfile("seft-output-")
+    dir.create(input_dir)
+    z_path <- file.path(input_dir, "z.nii.gz")
+    atlas_path <- file.path(input_dir, "atlas.nii.gz")
+    RNifti::writeNifti(fixture$z, z_path)
+    RNifti::writeNifti(fixture$atlas, atlas_path)
+    result <- seft(zmap = z_path, atlas = atlas_path, neighbor_range = 1L, out_dir = output_dir, prefix = "tiny", verbose = FALSE)
+    expect_true(all(file.exists(unlist(result$output_files[c("regions", "significant", "summary", "rds", "signed_z", "figure")]))) )
+    expect_gt(file.info(result$output_files$figure)$size, 0)
+    expect_identical(dim(RNifti::readNifti(result$output_files$signed_z)), dim(fixture$z))
+})
+
+test_that("plot contains only methods present in the result", {
+    fixture <- tiny_seft_fixture()
+    result <- seft(zmap = fixture$z, atlas = fixture$atlas, working_model = "co", neighbor_range = 1L, verbose = FALSE)
+    expect_setequal(unique(result$regions$method), "SEFT-CO")
+    file <- tempfile(fileext = ".pdf")
+    expect_invisible(plot(result, file = file))
+    expect_gt(file.info(file)$size, 0)
+})
+
+test_that("plot accepts explicit TFCE coverage and validates it", {
+    fixture <- tiny_seft_fixture()
+    result <- seft(zmap = fixture$z, atlas = fixture$atlas, neighbor_range = 1L, verbose = FALSE)
+    coverage <- data.frame(region_id = 1:2, tfce_coverage = c(0.25, 0.75))
+    file <- tempfile(fileext = ".pdf")
+    expect_invisible(plot(result, file = file, tfce_coverage = coverage, main = "Available methods"))
+    expect_gt(file.info(file)$size, 0)
+    expect_error(plot(result, tfce_coverage = data.frame(region_id = 1)), "must contain")
+    expect_error(plot(result, tfce_coverage = transform(coverage, tfce_coverage = 2)), "in \\[0, 1\\]")
+    expect_error(SEFT:::plot.seft_result(list()), "seft_result")
+})
+
+test_that("label sources are normalized and checked", {
+    ids <- 1:2
+    expect_equal(SEFT:::.read_labels(data.frame(region_id = ids, label = c("A", "B")), ids)$label, c("A", "B"))
+    plain <- tempfile(fileext = ".txt")
+    writeLines(c("# labels", "1 Alpha", "2 Beta"), plain)
+    expect_equal(SEFT:::.read_labels(plain, ids)$label, c("Alpha", "Beta"))
+    header <- tempfile(fileext = ".txt")
+    writeLines(c("region_id label", "1 One", "2 Two"), header)
+    expect_equal(SEFT:::.read_labels(header, ids)$label, c("One", "Two"))
+    expect_error(SEFT:::.read_labels(data.frame(id = ids, name = c("A", "B")), ids), "needs region_id")
+    expect_error(SEFT:::.read_labels(data.frame(region_id = c(1, 1), label = c("A", "B")), ids), "duplicate")
+})

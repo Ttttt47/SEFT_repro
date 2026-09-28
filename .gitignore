@@ -1,0 +1,33 @@
+# Reproduction outputs and data (never redistributed)
+/outputs/
+/real_data/adni/input/
+
+# Per-run state, logs, and FSL fragments
+**/logs/
+**/status/
+**/*.log
+**/*.pid
+**/RUN_STATE
+**/RUN_COMPLETE
+**/*_SEED*_p_*
+**/*_SEED*_corrp_*
+**/*.generate
+**/*.defragment
+
+# Python/R/build caches and local environments
+__pycache__/
+*.py[cod]
+*.so
+*.o
+.pytest_cache/
+.Rhistory
+.RData
+Rplots.pdf
+.cache/
+.envs/
+.vendor/
+
+# Local simulation audit artifacts retained outside version control
+/simulations/sim_ising/*.rds
+/simulations/sim_ising/*.log
+/simulations/sim_ising/launch_*.sh

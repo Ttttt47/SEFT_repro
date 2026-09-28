@@ -1,0 +1,4 @@
+AAL3v1.nii.gz and AAL3v1.nii.txt in extdata/neurovault_790848 are
+third-party AAL3 atlas material from GIN-IMN, not covered by SEFT's MIT license.
+The publisher states the GNU General Public License for AAL3:
+https://www.gin.cnrs.fr/en/tools/aal/

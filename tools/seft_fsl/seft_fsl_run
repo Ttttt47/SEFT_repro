@@ -1,0 +1,92 @@
+#!/usr/bin/env python3
+"""Run SEFT partial-conjunction testing on FSL-compatible statistic maps."""
+
+from __future__ import annotations
+
+import argparse
+
+from seft_fsl_lib import (
+    DEFAULT_ALPHA,
+    DEFAULT_BANDWIDTH,
+    DEFAULT_LAMBDA,
+    DEFAULT_NEIGHBOR_RANGE,
+    DEFAULT_PC_LEVELS,
+    fail,
+    parse_float_list,
+    run_seft_analysis,
+)
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    input_group = parser.add_mutually_exclusive_group(required=True)
+    input_group.add_argument("--zmap", help="Input signed Z-map NIfTI.")
+    input_group.add_argument("--tstat", help="Input FSL t-statistic NIfTI.")
+    parser.add_argument("--design-mat", help="FSL design.mat; required with --tstat.")
+    parser.add_argument("--atlas", required=True, help="Integer atlas/segmentation NIfTI.")
+    parser.add_argument("--atlas-labels", help="Atlas label TSV/txt/XML file.")
+    parser.add_argument("--mask", help="Optional analysis mask NIfTI.")
+    parser.add_argument("--out-dir", required=True, help="Output directory.")
+    parser.add_argument("--prefix", required=True, help="Output filename prefix.")
+    parser.add_argument(
+        "--working-model",
+        choices=["co", "covariate-adaptive", "fdr-smoothing", "fdrs", "deepfdr", "fchmrf", "ising"],
+        default="co",
+        help="Working model used to construct the SEFT scores.",
+    )
+    parser.add_argument("--alpha", type=float, default=DEFAULT_ALPHA)
+    parser.add_argument(
+        "--pc-levels",
+        default=",".join(f"{v:g}" for v in DEFAULT_PC_LEVELS),
+        help="Comma-separated PC levels.",
+    )
+    parser.add_argument("--simes", action="store_true", help="Also output BH-Simes comparator results.")
+    parser.add_argument("--seed", type=int, default=1)
+    parser.add_argument(
+        "--denoise",
+        action="store_true",
+        help="Apply wavelet denoising; disabled when this flag is omitted.",
+    )
+    parser.add_argument("--bandwidth", type=float, default=DEFAULT_BANDWIDTH)
+    parser.add_argument("--lambda", dest="lambda_value", type=float, default=DEFAULT_LAMBDA)
+    parser.add_argument("--neighbor-range", type=int, default=DEFAULT_NEIGHBOR_RANGE)
+    parser.add_argument("--score-clip-c", type=float, default=0.99)
+    parser.add_argument("--save-internals", action="store_true")
+    parser.add_argument("--rscript", help="Rscript executable to use.")
+    return parser
+
+
+def main() -> None:
+    parser = build_parser()
+    args = parser.parse_args()
+    try:
+        result = run_seft_analysis(
+            zmap=args.zmap,
+            tstat=args.tstat,
+            design_mat=args.design_mat,
+            atlas=args.atlas,
+            atlas_labels=args.atlas_labels,
+            mask=args.mask,
+            out_dir=args.out_dir,
+            prefix=args.prefix,
+            working_model=args.working_model,
+            alpha=args.alpha,
+            pc_levels=parse_float_list(args.pc_levels),
+            simes=args.simes,
+            seed=args.seed,
+            denoise="wavelet" if args.denoise else "none",
+            bandwidth=args.bandwidth,
+            lambda_value=args.lambda_value,
+            neighbor_range=args.neighbor_range,
+            score_clip_c=args.score_clip_c,
+            save_internals=args.save_internals,
+            rscript=args.rscript,
+        )
+    except Exception as exc:
+        fail(str(exc))
+
+    print(f"SEFT/FSL run complete: {result.summary}")
+
+
+if __name__ == "__main__":
+    main()

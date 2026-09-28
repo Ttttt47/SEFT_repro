@@ -1,0 +1,108 @@
+#!/usr/bin/env python3
+"""Prepare a merged Harvard-Oxford 2 mm atlas for SEFT/FSL runs."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+from pathlib import Path
+import xml.etree.ElementTree as ET
+
+import nibabel as nib
+import numpy as np
+
+from seft_fsl_lib import assert_same_geometry, save_like
+
+
+SUBCORTICAL_EXCLUDE_INDEXES = {
+    0,   # Left Cerebral White Matter
+    1,   # Left Cerebral Cortex
+    2,   # Left Lateral Ventricle
+    11,  # Right Cerebral White Matter
+    12,  # Right Cerebral Cortex
+    13,  # Right Lateral Ventricle
+}
+
+
+def parse_xml_labels(path: Path) -> dict[int, str]:
+    labels: dict[int, str] = {}
+    root = ET.parse(path).getroot()
+    for label in root.findall(".//label"):
+        labels[int(label.attrib["index"])] = (label.text or "").strip()
+    return labels
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--fsldir", default=os.environ.get("FSLDIR", "/usr/local/fsl"))
+    parser.add_argument("--out-dir", required=True)
+    parser.add_argument("--prefix", default="harvard_oxford_thr25_2mm")
+    return parser
+
+
+def main() -> None:
+    args = build_parser().parse_args()
+    fsldir = Path(args.fsldir)
+    atlas_dir = fsldir / "data" / "atlases"
+    cort_path = atlas_dir / "HarvardOxford" / "HarvardOxford-cort-maxprob-thr25-2mm.nii.gz"
+    sub_path = atlas_dir / "HarvardOxford" / "HarvardOxford-sub-maxprob-thr25-2mm.nii.gz"
+    cort_xml = atlas_dir / "HarvardOxford-Cortical.xml"
+    sub_xml = atlas_dir / "HarvardOxford-Subcortical.xml"
+
+    cort_img = nib.load(str(cort_path))
+    sub_img = nib.load(str(sub_path))
+    assert_same_geometry(cort_img, sub_img, "Harvard-Oxford cortical", "Harvard-Oxford subcortical")
+
+    cort = np.rint(cort_img.get_fdata()).astype(np.int16)
+    sub = np.rint(sub_img.get_fdata()).astype(np.int16)
+    cort_labels_by_index = parse_xml_labels(cort_xml)
+    sub_labels_by_index = parse_xml_labels(sub_xml)
+
+    merged = np.zeros(cort.shape, dtype=np.int16)
+    labels: list[tuple[int, str, str, int]] = []
+    next_id = 1
+
+    for source_value in sorted(int(v) for v in np.unique(cort) if v > 0):
+        source_index = source_value - 1
+        merged[cort == source_value] = next_id
+        labels.append((next_id, cort_labels_by_index.get(source_index, f"cortical_{source_index}"), "cortical", source_index))
+        next_id += 1
+
+    for source_value in sorted(int(v) for v in np.unique(sub) if v > 0):
+        source_index = source_value - 1
+        if source_index in SUBCORTICAL_EXCLUDE_INDEXES:
+            continue
+        region_mask = sub == source_value
+        merged[region_mask] = next_id
+        labels.append((next_id, sub_labels_by_index.get(source_index, f"subcortical_{source_index}"), "subcortical", source_index))
+        next_id += 1
+
+    out_dir = Path(args.out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    atlas_out = save_like(merged, cort_img, out_dir / f"{args.prefix}.nii.gz", dtype=np.int16)
+    labels_out = out_dir / f"{args.prefix}_labels.tsv"
+    with labels_out.open("w", newline="") as f:
+        f.write("region_id\tlabel\tsource\tsource_index\n")
+        for region_id, label, source, source_index in labels:
+            f.write(f"{region_id}\t{label}\t{source}\t{source_index}\n")
+
+    metadata = {
+        "atlas": str(atlas_out),
+        "labels": str(labels_out),
+        "fsldir": str(fsldir),
+        "cortical_source": str(cort_path),
+        "subcortical_source": str(sub_path),
+        "subcortical_excluded_indexes": sorted(SUBCORTICAL_EXCLUDE_INDEXES),
+        "region_count": len(labels),
+        "merge_rule": "cortical first; retained subcortical labels override nonzero cortical voxels",
+    }
+    metadata_out = out_dir / f"{args.prefix}_metadata.json"
+    metadata_out.write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n")
+    print(f"Wrote {atlas_out}")
+    print(f"Wrote {labels_out}")
+
+
+if __name__ == "__main__":
+    main()
+

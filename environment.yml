@@ -1,0 +1,42 @@
+name: seft-repro
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.11
+  - numpy
+  - scipy
+  - pandas
+  - nibabel
+  - nilearn
+  - matplotlib
+  - pillow
+  - pybind11
+  - scikit-image
+  - tqdm
+  - networkx
+  - pytest
+  - r-base=4.3
+  - r-testthat
+  - r-rcpp
+  - r-rcpparmadillo
+  - r-data.table
+  - r-ggplot2
+  - r-cowplot
+  - r-glue
+  - r-rnifti
+  - r-oro.nifti
+  - r-waveslim
+  - r-optparse
+  - r-mass
+  - r-digest
+  - r-jsonlite
+  - r-neurosim
+  - r-circlize
+  - r-plot3d
+  - r-ciftitools
+  - bioconductor-complexheatmap
+  - pip
+  - pip:
+      - torch==2.5.1
+      - torchinfo
